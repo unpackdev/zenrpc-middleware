@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -35,9 +36,9 @@ func WithMetrics(appName string) zenrpc.MiddlewareFunc {
 	prometheus.MustRegister(rpcErrors, rpcDurations)
 
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) zenrpc.Response {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) zenrpc.Response {
 			start, code := time.Now(), ""
-			r := h(ctx, method, params)
+			r := h(ctx, w, method, params)
 
 			// log metrics
 			if n := zenrpc.NamespaceFromContext(ctx); n != "" {

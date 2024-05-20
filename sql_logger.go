@@ -63,23 +63,23 @@ func SqlGroupFromContext(ctx context.Context) string {
 // If `DurationRemote` or `DurationDiff` are set then `DurationLocal` excludes these values.
 func WithTiming(isDevel bool, allowDebugFunc AllowDebugFunc) zenrpc.MiddlewareFunc {
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) (resp zenrpc.Response) {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) (resp zenrpc.Response) {
 			// check for debug id
 			if !isDevel {
 				req, ok := zenrpc.RequestFromContext(ctx)
 				if !ok || req == nil {
-					return h(ctx, method, params)
+					return h(ctx, w, method, params)
 				}
 
 				reqClone := req.Clone(ctx)
 				if reqClone == nil || !allowDebugFunc(reqClone) {
-					return h(ctx, method, params)
+					return h(ctx, w, method, params)
 				}
 			}
 
 			now := time.Now()
 
-			resp = h(ctx, method, params)
+			resp = h(ctx, w, method, params)
 			if resp.Extensions == nil {
 				resp.Extensions = make(map[string]interface{})
 			}
@@ -111,19 +111,19 @@ func WithSQLLogger(db *pg.DB, isDevel bool, allowDebugFunc, allowSqlDebugFunc Al
 	db.AddQueryHook(ql)
 
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) (resp zenrpc.Response) {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) (resp zenrpc.Response) {
 			logQuery := true
 
 			// check for debug id
 			if !isDevel {
 				req, ok := zenrpc.RequestFromContext(ctx)
 				if !ok || req == nil {
-					return h(ctx, method, params)
+					return h(ctx, w, method, params)
 				}
 
 				reqClone := req.Clone(ctx)
 				if reqClone == nil || !allowDebugFunc(reqClone) {
-					return h(ctx, method, params)
+					return h(ctx, w, method, params)
 				}
 
 				if reqClone == nil || !allowSqlDebugFunc(reqClone) {
@@ -135,7 +135,7 @@ func WithSQLLogger(db *pg.DB, isDevel bool, allowDebugFunc, allowSqlDebugFunc Al
 			ctx = NewDebugIDContext(ctx, debugID)
 			ql.Push(debugID)
 
-			resp = h(ctx, method, params)
+			resp = h(ctx, w, method, params)
 			if resp.Extensions == nil {
 				resp.Extensions = make(map[string]interface{})
 			}

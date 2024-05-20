@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/vmkteam/zenrpc/v2"
@@ -29,9 +30,9 @@ type (
 // WithDevel sets bool flag to context for detecting development environment.
 func WithDevel(isDevel bool) zenrpc.MiddlewareFunc {
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) zenrpc.Response {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) zenrpc.Response {
 			ctx = NewIsDevelContext(ctx, isDevel)
-			return h(ctx, method, params)
+			return h(ctx, w, method, params)
 		}
 	}
 }
@@ -39,7 +40,7 @@ func WithDevel(isDevel bool) zenrpc.MiddlewareFunc {
 // WithHeaders sets User-Agent, Platform, Version, X-Country headers to context. User-Agent strips to 2048 chars, Platform and Version – to 64, X-Country - to 16.
 func WithHeaders() zenrpc.MiddlewareFunc {
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) zenrpc.Response {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) zenrpc.Response {
 			if req, ok := zenrpc.RequestFromContext(ctx); ok && req != nil {
 				ctx = NewUserAgentContext(ctx, req.UserAgent())
 				ctx = NewPlatformContext(ctx, req.Header.Get("Platform"))
@@ -47,7 +48,7 @@ func WithHeaders() zenrpc.MiddlewareFunc {
 				ctx = NewXRequestIDContext(ctx, req.Header.Get(echo.HeaderXRequestID))
 				ctx = NewCountryContext(ctx, req.Header.Get("X-Country"))
 			}
-			return h(ctx, method, params)
+			return h(ctx, w, method, params)
 		}
 	}
 }

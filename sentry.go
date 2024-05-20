@@ -30,7 +30,7 @@ func sentryHubFromContext(ctx context.Context) (*sentry.Hub, bool) {
 // version, method.
 func WithSentry(serverName string) zenrpc.MiddlewareFunc {
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) zenrpc.Response {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) zenrpc.Response {
 			if hub, ok := sentryHubFromContext(ctx); ok {
 				start, platform, version, ip, xRequestID := time.Now(), PlatformFromContext(ctx), VersionFromContext(ctx), IPFromContext(ctx), XRequestIDFromContext(ctx)
 
@@ -49,7 +49,7 @@ func WithSentry(serverName string) zenrpc.MiddlewareFunc {
 				})
 			}
 
-			return h(ctx, method, params)
+			return h(ctx, w, method, params)
 		}
 	}
 }
@@ -58,11 +58,11 @@ func WithSentry(serverName string) zenrpc.MiddlewareFunc {
 // sensitive error data from response. It is good to use pkg/errors for stack trace support in sentry.
 func WithErrorLogger(pf Printf, serverName string) zenrpc.MiddlewareFunc {
 	return func(h zenrpc.InvokeFunc) zenrpc.InvokeFunc {
-		return func(ctx context.Context, method string, params json.RawMessage) zenrpc.Response {
+		return func(ctx context.Context, w http.ResponseWriter, method string, params json.RawMessage) zenrpc.Response {
 			start, platform, version, ip, xRequestID := time.Now(), PlatformFromContext(ctx), VersionFromContext(ctx), IPFromContext(ctx), XRequestIDFromContext(ctx)
 			namespace := zenrpc.NamespaceFromContext(ctx)
 
-			r := h(ctx, method, params)
+			r := h(ctx, w, method, params)
 			if r.Error != nil && (r.Error.Code == http.StatusInternalServerError || r.Error.Code < 0) {
 				duration := time.Since(start)
 				methodName := fullMethodName(serverName, namespace, method)
